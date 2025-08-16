@@ -4,12 +4,16 @@ import java.util.function.Function;
 
 import com.ccp.constantes.CcpOtherConstants;
 import com.ccp.decorators.CcpJsonRepresentation;
+import com.ccp.decorators.CcpJsonRepresentation.CcpJsonFieldName;
 import com.ccp.especifications.db.utils.CcpEntity;
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
-
+enum CcpMessageReceiverConstants  implements CcpJsonFieldName{
+	values, topic
+	
+}
 public class CcpMessageReceiver implements MessageReceiver {
 	protected final Function<CcpJsonRepresentation, CcpJsonRepresentation> jnAsyncBusinessNotifyError;
 	
@@ -48,7 +52,8 @@ public class CcpMessageReceiver implements MessageReceiver {
 //						);
 //				task.apply(mdMessage);
 			} catch (Throwable e) {
-				CcpJsonRepresentation put = CcpOtherConstants.EMPTY_JSON.put("topic", this.name).put("values", mdMessage);
+				CcpJsonRepresentation put = CcpOtherConstants.EMPTY_JSON
+						.put(CcpMessageReceiverConstants.topic, this.name).put(CcpMessageReceiverConstants.values, mdMessage);
 				throw new RuntimeException(put.asPrettyJson(), e);
 			}
 			consumer.ack();

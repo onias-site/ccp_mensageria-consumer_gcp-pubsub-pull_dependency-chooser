@@ -8,6 +8,7 @@ import com.ccp.decorators.CcpInputStreamDecorator;
 import com.ccp.decorators.CcpJsonRepresentation;
 import com.ccp.decorators.CcpPropertiesDecorator;
 import com.ccp.decorators.CcpStringDecorator;
+import com.ccp.decorators.CcpJsonRepresentation.CcpJsonFieldName;
 import com.google.api.gax.core.ExecutorProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.core.InstantiatingExecutorProvider;
@@ -15,6 +16,10 @@ import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.cloud.pubsub.v1.Subscriber.Builder;
 import com.google.pubsub.v1.ProjectSubscriptionName;
+enum CcpPubSubStarterConstants  implements CcpJsonFieldName{
+	project_id
+	
+}
 public class CcpPubSubStarter { 
 
 	final CcpJsonRepresentation parameters;
@@ -44,7 +49,7 @@ public class CcpPubSubStarter {
 		
 		Subscriber subscriber = null;
 		try {
-			String projectName = this.parameters.getAsString("project_id");
+			String projectName = this.parameters.getAsString(CcpPubSubStarterConstants.project_id);
 			
 			ProjectSubscriptionName subscription = ProjectSubscriptionName.of(projectName, this.topic.name);
 			ExecutorProvider executorProvider = InstantiatingExecutorProvider.newBuilder().setExecutorThreadCount(this.threads).build();
