@@ -10,11 +10,10 @@ import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
-enum CcpMessageReceiverConstants  implements CcpJsonFieldName{
-	values, topic
-	
-}
 public class CcpMessageReceiver implements MessageReceiver {
+	enum JsonFieldNames implements CcpJsonFieldName{
+		values, topic
+	}
 	protected final Function<CcpJsonRepresentation, CcpJsonRepresentation> jnAsyncBusinessNotifyError;
 	
 	private final Function<CcpJsonRepresentation, CcpJsonRepresentation> notifyError ;
@@ -53,7 +52,7 @@ public class CcpMessageReceiver implements MessageReceiver {
 //				task.apply(mdMessage);
 			} catch (Throwable e) {
 				CcpJsonRepresentation put = CcpOtherConstants.EMPTY_JSON
-						.put(CcpMessageReceiverConstants.topic, this.name).put(CcpMessageReceiverConstants.values, mdMessage);
+						.put(JsonFieldNames.topic, this.name).put(JsonFieldNames.values, mdMessage);
 				throw new RuntimeException(put.asPrettyJson(), e);
 			}
 			consumer.ack();
