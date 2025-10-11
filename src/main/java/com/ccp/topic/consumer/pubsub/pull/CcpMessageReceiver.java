@@ -1,11 +1,10 @@
 package com.ccp.topic.consumer.pubsub.pull;
 
-import java.util.function.Function;
-
 import com.ccp.constantes.CcpOtherConstants;
 import com.ccp.decorators.CcpJsonRepresentation;
 import com.ccp.decorators.CcpJsonRepresentation.CcpJsonFieldName;
 import com.ccp.especifications.db.utils.CcpEntity;
+import com.ccp.especifications.mensageria.receiver.CcpBusiness;
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.protobuf.ByteString;
@@ -14,18 +13,18 @@ public class CcpMessageReceiver implements MessageReceiver {
 	enum JsonFieldNames implements CcpJsonFieldName{
 		values, topic
 	}
-	protected final Function<CcpJsonRepresentation, CcpJsonRepresentation> jnAsyncBusinessNotifyError;
+	protected final CcpBusiness jnAsyncBusinessNotifyError;
 	
-	private final Function<CcpJsonRepresentation, CcpJsonRepresentation> notifyError ;
+	private final CcpBusiness notifyError ;
 
 	protected final CcpEntity asyncTask;
 	
 	public final String name;
 
 	
-	public CcpMessageReceiver(Function<CcpJsonRepresentation, CcpJsonRepresentation> notifyError,
+	public CcpMessageReceiver(CcpBusiness notifyError,
 			 CcpEntity asyncTask,
-			String name,  Function<CcpJsonRepresentation, CcpJsonRepresentation> jnAsyncBusinessNotifyError) {
+			String name,  CcpBusiness jnAsyncBusinessNotifyError) {
 		this.notifyError = notifyError;
 		this.asyncTask = asyncTask;
 		this.jnAsyncBusinessNotifyError = jnAsyncBusinessNotifyError;
@@ -38,11 +37,11 @@ public class CcpMessageReceiver implements MessageReceiver {
 			String receivedMessage = data.toStringUtf8();
 			CcpJsonRepresentation mdMessage = new CcpJsonRepresentation(receivedMessage);
 			try {
-/*				Function<CcpJsonRepresentation, CcpJsonRepresentation> task = msg -> 
+/*				CcpBusiness task = msg -> 
  * 					CcpAsyncTask.executeProcess(this.name, msg, 
  * 					this.asyncTask, this.jnAsyncBusinessNotifyError);
 */
-//				Function<CcpJsonRepresentation, CcpJsonRepresentation> task = msg -> 			
+//				CcpBusiness task = msg -> 			
 //				JnAsyncMensageriaSender.INSTANCE.executeProcesss(
 //						this.asyncTask, 
 //						this.name, 
