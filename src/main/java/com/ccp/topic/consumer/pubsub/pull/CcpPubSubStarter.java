@@ -6,7 +6,6 @@ import java.io.InputStream;
 import com.ccp.decorators.CcpInputStreamDecorator;
 import com.ccp.decorators.CcpJsonRepresentation;
 import com.ccp.decorators.CcpJsonRepresentation.CcpJsonFieldName;
-import com.ccp.decorators.CcpJsonRepresentation;
 import com.ccp.decorators.CcpPropertiesDecorator;
 import com.ccp.decorators.CcpStringDecorator;
 import com.ccp.business.CcpBusiness;
