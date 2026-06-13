@@ -16,7 +16,12 @@ import com.google.auth.oauth2.ServiceAccountCredentials;
 import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.cloud.pubsub.v1.Subscriber.Builder;
 import com.google.pubsub.v1.ProjectSubscriptionName;
-public class CcpPubSubStarter { 
+/**
+ * Inicializador de assinante Pub/Sub pull para GCP. Lê as credenciais de
+ * {@code GOOGLE_APPLICATION_CREDENTIALS}, cria o {@code Subscriber} com o número de threads
+ * configurado e aguarda mensagens em {@code synchronizeMessages()}.
+ */
+public class CcpPubSubStarter {
 	enum JsonFieldNames implements CcpJsonFieldName{
 		project_id
 	}

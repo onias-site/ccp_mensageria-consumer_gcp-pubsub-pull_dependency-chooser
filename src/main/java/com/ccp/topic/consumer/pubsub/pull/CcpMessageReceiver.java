@@ -9,6 +9,11 @@ import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+/**
+ * Implementação de {@code MessageReceiver} do GCP Pub/Sub. Desserializa a mensagem recebida,
+ * executa a tarefa assíncrona configurada e confirma ({@code ack}) em caso de sucesso ou
+ * recusa ({@code nack}) notificando o handler de erros em caso de falha.
+ */
 public class CcpMessageReceiver implements MessageReceiver {
 	enum JsonFieldNames implements CcpJsonFieldName{
 		values, topic
