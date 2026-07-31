@@ -1,4 +1,4 @@
-package com.ccp.topic.consumer.pubsub.pull;
+﻿package com.ccp.topic.consumer.pubsub.pull;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -95,13 +95,9 @@ public class CcpPubSubStarter {
 		CcpInputStreamDecorator inputStreamFrom = ccpStringDecorator.inputStreamFrom();
 		InputStream is = inputStreamFrom.fromEnvironmentVariablesOrClassLoaderOrFile();
 
-		FixedCredentialsProvider create;
-		try {
-			ServiceAccountCredentials fromStream = ServiceAccountCredentials.fromStream(is);
-			create = FixedCredentialsProvider.create(fromStream);
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		FixedCredentialsProvider create; 
+		ServiceAccountCredentials fromStream = ServiceAccountCredentials.fromStream(is);
+		create = FixedCredentialsProvider.create(fromStream);
 		return create;
 
 	
