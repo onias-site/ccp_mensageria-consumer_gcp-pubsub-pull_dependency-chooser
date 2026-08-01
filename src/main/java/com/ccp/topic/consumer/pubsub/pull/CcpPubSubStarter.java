@@ -1,14 +1,13 @@
 ﻿package com.ccp.topic.consumer.pubsub.pull;
 
-import java.io.IOException;
 import java.io.InputStream;
 
+import com.ccp.business.CcpBusiness;
 import com.ccp.decorators.CcpInputStreamDecorator;
 import com.ccp.decorators.CcpJsonRepresentation;
 import com.ccp.decorators.CcpJsonRepresentation.CcpJsonFieldName;
 import com.ccp.decorators.CcpPropertiesDecorator;
 import com.ccp.decorators.CcpStringDecorator;
-import com.ccp.business.CcpBusiness;
 import com.google.api.gax.core.ExecutorProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.core.InstantiatingExecutorProvider;
@@ -90,15 +89,17 @@ public class CcpPubSubStarter {
 	}
 
 	private FixedCredentialsProvider getCredentials(){
-		
 		CcpStringDecorator ccpStringDecorator = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
 		CcpInputStreamDecorator inputStreamFrom = ccpStringDecorator.inputStreamFrom();
-		InputStream is = inputStreamFrom.fromEnvironmentVariablesOrClassLoaderOrFile();
+		
+		try (InputStream is = inputStreamFrom.fromEnvironmentVariablesOrClassLoaderOrFile(); ){
+			ServiceAccountCredentials fromStream = ServiceAccountCredentials.fromStream(is);
+			FixedCredentialsProvider create = FixedCredentialsProvider.create(fromStream);
+			return create;
+			
+		} catch (Exception e) {
+			throw new RuntimeException(e);		}
 
-		FixedCredentialsProvider create; 
-		ServiceAccountCredentials fromStream = ServiceAccountCredentials.fromStream(is);
-		create = FixedCredentialsProvider.create(fromStream);
-		return create;
 
 	
 	}
