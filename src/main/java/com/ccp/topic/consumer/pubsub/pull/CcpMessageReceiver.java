@@ -55,9 +55,7 @@ public class CcpMessageReceiver implements MessageReceiver {
 //						);
 //				task.apply(mdMessage);
 			} catch (Throwable e) {
-				CcpJsonRepresentation put = CcpOtherConstants.EMPTY_JSON
-						.put(JsonFieldNames.topic, this.name).put(JsonFieldNames.values, mdMessage);
-				throw new RuntimeException(put.asPrettyJson(), e);
+				throw new CcpErrorMessageReceiverTaskFailed(this.name, mdMessage, e);
 			}
 			consumer.ack();
 		} catch (Throwable e) {
@@ -67,7 +65,16 @@ public class CcpMessageReceiver implements MessageReceiver {
 			this.notifyError.apply(execute);
 			consumer.nack();
 		}
-		
+
 	}
 
+	@SuppressWarnings("serial")
+	private static class CcpErrorMessageReceiverTaskFailed extends RuntimeException {
+		private CcpErrorMessageReceiverTaskFailed(String topicName, CcpJsonRepresentation mdMessage, Throwable cause) {
+			super(CcpOtherConstants.EMPTY_JSON
+					.put(JsonFieldNames.topic, topicName)
+					.put(JsonFieldNames.values, mdMessage)
+					.asPrettyJson(), cause);
+		}
+	}
 }

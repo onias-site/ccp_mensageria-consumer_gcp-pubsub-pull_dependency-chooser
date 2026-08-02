@@ -1,4 +1,4 @@
-﻿package com.ccp.topic.consumer.pubsub.pull;
+package com.ccp.topic.consumer.pubsub.pull;
 
 import java.io.InputStream;
 
@@ -98,11 +98,18 @@ public class CcpPubSubStarter {
 			return create;
 			
 		} catch (Exception e) {
-			throw new RuntimeException(e);		}
+			throw new CcpErrorPubSubCredentialsLoad(e);		}
 
 
 	
 	}
 
 	
+
+	@SuppressWarnings("serial")
+	private static class CcpErrorPubSubCredentialsLoad extends RuntimeException {
+		private CcpErrorPubSubCredentialsLoad(Throwable cause) {
+			super(cause);
+		}
+	}
 }
