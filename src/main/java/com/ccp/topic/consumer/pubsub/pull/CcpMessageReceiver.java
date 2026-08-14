@@ -61,8 +61,8 @@ public class CcpMessageReceiver implements MessageReceiver {
 		} catch (Throwable e) {
 			CcpJsonRepresentation json = new CcpJsonRepresentation(e);
 			
-			CcpJsonRepresentation execute = this.notifyError.apply(json);
-			this.notifyError.apply(execute);
+			CcpJsonRepresentation execute = this.notifyError.execute(json);
+			this.notifyError.execute(execute);
 			consumer.nack();
 		}
 

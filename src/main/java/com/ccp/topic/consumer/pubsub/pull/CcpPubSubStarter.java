@@ -71,15 +71,15 @@ public class CcpPubSubStarter {
 				RuntimeException ex = new RuntimeException("Topic still has not been created: " + this.topic.name);
 				CcpJsonRepresentation json = new CcpJsonRepresentation(ex);
 				
-				CcpJsonRepresentation execute = this.notifyError.apply(json);
-				this.notifyError.apply(execute);
+				CcpJsonRepresentation execute = this.notifyError.execute(json);
+				this.notifyError.execute(execute);
 			}
 			return this;
 		} catch (Throwable e) {
 			CcpJsonRepresentation json = new CcpJsonRepresentation(e);
 			
-			CcpJsonRepresentation execute = this.notifyError.apply(json);
-			this.notifyError.apply(execute);
+			CcpJsonRepresentation execute = this.notifyError.execute(json);
+			this.notifyError.execute(execute);
 			return this;
 		} finally {
 			if (subscriber != null) {
