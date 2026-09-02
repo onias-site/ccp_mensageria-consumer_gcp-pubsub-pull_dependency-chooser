@@ -1,7 +1,7 @@
 package com.ccp.topic.consumer.pubsub.pull;
 
 import com.ccp.decorators.CcpJsonRepresentation;
-import com.ccp.decorators.CcpJsonRepresentation.CcpJsonFieldName;
+import com.ccp.decorators.CcpJsonFieldName;
 import com.ccp.especifications.db.utils.entity.CcpEntity;
 import com.ccp.business.CcpBusiness;
 import com.ccp.constants.CcpOtherConstants;
@@ -55,7 +55,8 @@ public class CcpMessageReceiver implements MessageReceiver {
 //						);
 //				task.apply(mdMessage);
 			} catch (Throwable e) {
-				throw new CcpErrorMessageReceiverTaskFailed(this.name, mdMessage, e);
+				CcpErrorMessageReceiverTaskFailed ccpErrorMessageReceiverTaskFailed = new CcpErrorMessageReceiverTaskFailed(this.name, mdMessage, e);
+				throw ccpErrorMessageReceiverTaskFailed;
 			}
 			consumer.ack();
 		} catch (Throwable e) {

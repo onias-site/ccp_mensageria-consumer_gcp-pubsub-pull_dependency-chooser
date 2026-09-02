@@ -5,7 +5,7 @@ import java.io.InputStream;
 import com.ccp.business.CcpBusiness;
 import com.ccp.decorators.CcpInputStreamDecorator;
 import com.ccp.decorators.CcpJsonRepresentation;
-import com.ccp.decorators.CcpJsonRepresentation.CcpJsonFieldName;
+import com.ccp.decorators.CcpJsonFieldName;
 import com.ccp.decorators.CcpPropertiesDecorator;
 import com.ccp.decorators.CcpStringDecorator;
 import com.google.api.gax.core.ExecutorProvider;
@@ -55,7 +55,9 @@ public class CcpPubSubStarter {
 			String projectName = this.parameters.getAsString(JsonFieldNames.project_id);
 			
 			ProjectSubscriptionName subscription = ProjectSubscriptionName.of(projectName, this.topic.name);
-			ExecutorProvider executorProvider = InstantiatingExecutorProvider.newBuilder().setExecutorThreadCount(this.threads).build();
+			InstantiatingExecutorProvider.Builder newBuilder2 = InstantiatingExecutorProvider.newBuilder();
+			InstantiatingExecutorProvider.Builder setExecutorThreadCount = newBuilder2.setExecutorThreadCount(this.threads);
+			ExecutorProvider executorProvider = setExecutorThreadCount.build();
 
 			FixedCredentialsProvider credentials = this.getCredentials();
 			
@@ -67,8 +69,10 @@ public class CcpPubSubStarter {
 			subscriber.awaitTerminated();
 			return this;
 		}catch (IllegalStateException e) {
-			if(e.getCause() instanceof com.google.api.gax.rpc.NotFoundException) {
-				RuntimeException ex = new RuntimeException("Topic still has not been created: " + this.topic.name);
+			Throwable cause2 = e.getCause();
+			boolean isComgoogleapigaxrpcNotFoundException = cause2 instanceof com.google.api.gax.rpc.NotFoundException;
+			if(isComgoogleapigaxrpcNotFoundException) {
+				CcpErrorPubSubTopicNotCreated ex = new CcpErrorPubSubTopicNotCreated(this.topic.name);
 				CcpJsonRepresentation json = new CcpJsonRepresentation(ex);
 				
 				CcpJsonRepresentation execute = this.notifyError.execute(json);
@@ -82,7 +86,8 @@ public class CcpPubSubStarter {
 			this.notifyError.execute(execute);
 			return this;
 		} finally {
-			if (subscriber != null) {
+			boolean subscriberDiferente = subscriber != null;
+			if (subscriberDiferente) {
 				subscriber.stopAsync();
 			}
 		}
@@ -98,7 +103,8 @@ public class CcpPubSubStarter {
 			return create;
 			
 		} catch (Exception e) {
-			throw new CcpErrorPubSubCredentialsLoad(e);		}
+			CcpErrorPubSubCredentialsLoad ccpErrorPubSubCredentialsLoad = new CcpErrorPubSubCredentialsLoad(e);
+			throw ccpErrorPubSubCredentialsLoad;		}
 
 
 	
@@ -110,6 +116,20 @@ public class CcpPubSubStarter {
 	private static class CcpErrorPubSubCredentialsLoad extends RuntimeException {
 		private CcpErrorPubSubCredentialsLoad(Throwable cause) {
 			super(cause);
+		}
+	}
+
+	/**
+	 * Exceção usada para relatar que a inscrição não pôde ser iniciada porque o tópico ainda não existe no PubSub.
+	 */
+	@SuppressWarnings("serial")
+	public static class CcpErrorPubSubTopicNotCreated extends RuntimeException {
+		/**
+		 * Monta a mensagem informando qual tópico está faltando.
+		 * @param topicName o nome do tópico ainda não criado
+		 */
+		private CcpErrorPubSubTopicNotCreated(String topicName) {
+			super("Topic still has not been created: " + topicName);
 		}
 	}
 }
