@@ -9,6 +9,8 @@ import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
+import com.ccp.json.fields.validation.CcpJsonCommonsFields;
+
 /**
  * Implementação de {@code MessageReceiver} do GCP Pub/Sub. Desserializa a mensagem recebida,
  * executa a tarefa assíncrona configurada e confirma ({@code ack}) em caso de sucesso ou
@@ -16,7 +18,7 @@ import com.google.pubsub.v1.PubsubMessage;
  */
 public class CcpMessageReceiver implements MessageReceiver {
 	enum JsonFieldNames implements CcpJsonFieldName{
-		values, topic
+		values
 	}
 	protected final CcpBusiness jnAsyncBusinessNotifyError;
 	
@@ -73,7 +75,7 @@ public class CcpMessageReceiver implements MessageReceiver {
 	private static class CcpErrorMessageReceiverTaskFailed extends RuntimeException {
 		private CcpErrorMessageReceiverTaskFailed(String topicName, CcpJsonRepresentation mdMessage, Throwable cause) {
 			super(CcpOtherConstants.EMPTY_JSON
-					.put(JsonFieldNames.topic, topicName)
+					.put(CcpJsonCommonsFields.topic, topicName)
 					.put(JsonFieldNames.values, mdMessage)
 					.asPrettyJson(), cause);
 		}
