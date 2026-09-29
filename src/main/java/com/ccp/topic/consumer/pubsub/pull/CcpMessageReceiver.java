@@ -12,9 +12,9 @@ import com.google.pubsub.v1.PubsubMessage;
 import com.ccp.json.fields.validation.CcpJsonCommonsFields;
 
 /**
- * Implementação de {@code MessageReceiver} do GCP Pub/Sub. Desserializa a mensagem recebida,
- * executa a tarefa assíncrona configurada e confirma ({@code ack}) em caso de sucesso ou
- * recusa ({@code nack}) notificando o handler de erros em caso de falha.
+ * GCP Pub/Sub {@code MessageReceiver} implementation. Deserializes the received message,
+ * runs the configured asynchronous task and acknowledges it ({@code ack}) on success, or
+ * rejects it ({@code nack}) and notifies the error handler on failure.
  */
 public class CcpMessageReceiver implements MessageReceiver {
 	enum JsonFieldNames implements CcpJsonFieldName{
@@ -42,7 +42,7 @@ public class CcpMessageReceiver implements MessageReceiver {
 		try {
 			ByteString data = message.getData();
 			String receivedMessage = data.toStringUtf8();
-			CcpJsonRepresentation mdMessage = new CcpJsonRepresentation(receivedMessage);
+			CcpJsonRepresentation messageJson = new CcpJsonRepresentation(receivedMessage);
 			try {
 /*				CcpBusiness task = msg -> 
  * 					CcpAsyncTask.executeProcess(this.name, msg, 
@@ -55,17 +55,17 @@ public class CcpMessageReceiver implements MessageReceiver {
 //						msg, 
 //						this.jnAsyncBusinessNotifyError
 //						);
-//				task.apply(mdMessage);
+//				task.apply(messageJson);
 			} catch (Throwable e) {
-				CcpErrorMessageReceiverTaskFailed ccpErrorMessageReceiverTaskFailed = new CcpErrorMessageReceiverTaskFailed(this.name, mdMessage, e);
+				CcpErrorMessageReceiverTaskFailed ccpErrorMessageReceiverTaskFailed = new CcpErrorMessageReceiverTaskFailed(this.name, messageJson, e);
 				throw ccpErrorMessageReceiverTaskFailed;
 			}
 			consumer.ack();
 		} catch (Throwable e) {
 			CcpJsonRepresentation json = new CcpJsonRepresentation(e);
 			
-			CcpJsonRepresentation execute = this.notifyError.execute(json);
-			this.notifyError.execute(execute);
+			CcpJsonRepresentation errorNotificationResult = this.notifyError.execute(json);
+			this.notifyError.execute(errorNotificationResult);
 			consumer.nack();
 		}
 
@@ -73,10 +73,10 @@ public class CcpMessageReceiver implements MessageReceiver {
 
 	@SuppressWarnings("serial")
 	private static class CcpErrorMessageReceiverTaskFailed extends RuntimeException {
-		private CcpErrorMessageReceiverTaskFailed(String topicName, CcpJsonRepresentation mdMessage, Throwable cause) {
+		private CcpErrorMessageReceiverTaskFailed(String topicName, CcpJsonRepresentation messageJson, Throwable cause) {
 			super(CcpOtherConstants.EMPTY_JSON
 					.put(CcpJsonCommonsFields.topic, topicName)
-					.put(JsonFieldNames.values, mdMessage)
+					.put(JsonFieldNames.values, messageJson)
 					.asPrettyJson(), cause);
 		}
 	}

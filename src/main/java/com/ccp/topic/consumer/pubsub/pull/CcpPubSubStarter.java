@@ -16,9 +16,9 @@ import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.cloud.pubsub.v1.Subscriber.Builder;
 import com.google.pubsub.v1.ProjectSubscriptionName;
 /**
- * Inicializador de assinante Pub/Sub pull para GCP. Lê as credenciais de
- * {@code GOOGLE_APPLICATION_CREDENTIALS}, cria o {@code Subscriber} com o número de threads
- * configurado e aguarda mensagens em {@code synchronizeMessages()}.
+ * GCP Pub/Sub pull subscriber starter. Reads the credentials from
+ * {@code GOOGLE_APPLICATION_CREDENTIALS}, creates the {@code Subscriber} with the configured
+ * number of threads and waits for messages in {@code synchronizeMessages()}.
  */
 public class CcpPubSubStarter {
 	enum JsonFieldNames implements CcpJsonFieldName{
@@ -43,9 +43,9 @@ public class CcpPubSubStarter {
 
 	private CcpJsonRepresentation loadCredentials() {
 		CcpStringDecorator credentialsJson = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
-		CcpPropertiesDecorator propertiesFrom = credentialsJson.propertiesFrom();
-		CcpJsonRepresentation environmentVariablesOrClassLoaderOrFile = propertiesFrom.environmentVariablesOrClassLoaderOrFile();
-		return environmentVariablesOrClassLoaderOrFile;
+		CcpPropertiesDecorator propertiesDecorator = credentialsJson.propertiesFrom();
+		CcpJsonRepresentation credentialsProperties = propertiesDecorator.environmentVariablesOrClassLoaderOrFile();
+		return credentialsProperties;
 	}
 		
 	public CcpPubSubStarter synchronizeMessages() {
@@ -55,52 +55,52 @@ public class CcpPubSubStarter {
 			String projectName = this.parameters.getAsString(JsonFieldNames.project_id);
 			
 			ProjectSubscriptionName subscription = ProjectSubscriptionName.of(projectName, this.topic.name);
-			InstantiatingExecutorProvider.Builder newBuilder2 = InstantiatingExecutorProvider.newBuilder();
-			InstantiatingExecutorProvider.Builder setExecutorThreadCount = newBuilder2.setExecutorThreadCount(this.threads);
-			ExecutorProvider executorProvider = setExecutorThreadCount.build();
+			InstantiatingExecutorProvider.Builder executorProviderBuilder = InstantiatingExecutorProvider.newBuilder();
+			InstantiatingExecutorProvider.Builder executorProviderBuilderWithThreads = executorProviderBuilder.setExecutorThreadCount(this.threads);
+			ExecutorProvider executorProvider = executorProviderBuilderWithThreads.build();
 
 			FixedCredentialsProvider credentials = this.getCredentials();
 			
-			Builder newBuilder = Subscriber.newBuilder(subscription, this.topic);
-			Builder setCredentialsProvider = newBuilder.setCredentialsProvider(credentials);
-			Builder setExecutorProvider = setCredentialsProvider.setExecutorProvider(executorProvider);
-			subscriber = setExecutorProvider.build(); 
+			Builder subscriberBuilder = Subscriber.newBuilder(subscription, this.topic);
+			Builder subscriberBuilderWithCredentials = subscriberBuilder.setCredentialsProvider(credentials);
+			Builder subscriberBuilderWithExecutor = subscriberBuilderWithCredentials.setExecutorProvider(executorProvider);
+			subscriber = subscriberBuilderWithExecutor.build(); 
 			subscriber.startAsync();
 			subscriber.awaitTerminated();
 			return this;
 		}catch (IllegalStateException e) {
-			Throwable cause2 = e.getCause();
-			boolean isComgoogleapigaxrpcNotFoundException = cause2 instanceof com.google.api.gax.rpc.NotFoundException;
-			if(isComgoogleapigaxrpcNotFoundException) {
-				CcpErrorPubSubTopicNotCreated ex = new CcpErrorPubSubTopicNotCreated(this.topic.name);
-				CcpJsonRepresentation json = new CcpJsonRepresentation(ex);
+			Throwable cause = e.getCause();
+			boolean isTopicNotFound = cause instanceof com.google.api.gax.rpc.NotFoundException;
+			if(isTopicNotFound) {
+				CcpErrorPubSubTopicNotCreated topicNotCreatedError = new CcpErrorPubSubTopicNotCreated(this.topic.name);
+				CcpJsonRepresentation json = new CcpJsonRepresentation(topicNotCreatedError);
 				
-				CcpJsonRepresentation execute = this.notifyError.execute(json);
-				this.notifyError.execute(execute);
+				CcpJsonRepresentation errorNotificationResult = this.notifyError.execute(json);
+				this.notifyError.execute(errorNotificationResult);
 			}
 			return this;
 		} catch (Throwable e) {
 			CcpJsonRepresentation json = new CcpJsonRepresentation(e);
 			
-			CcpJsonRepresentation execute = this.notifyError.execute(json);
-			this.notifyError.execute(execute);
+			CcpJsonRepresentation errorNotificationResult = this.notifyError.execute(json);
+			this.notifyError.execute(errorNotificationResult);
 			return this;
 		} finally {
-			boolean subscriberDiferente = subscriber != null;
-			if (subscriberDiferente) {
+			boolean subscriberWasCreated = subscriber != null;
+			if (subscriberWasCreated) {
 				subscriber.stopAsync();
 			}
 		}
 	}
 
 	private FixedCredentialsProvider getCredentials(){
-		CcpStringDecorator ccpStringDecorator = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
-		CcpInputStreamDecorator inputStreamFrom = ccpStringDecorator.inputStreamFrom();
+		CcpStringDecorator credentialsVariableName = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
+		CcpInputStreamDecorator credentialsInputStreamDecorator = credentialsVariableName.inputStreamFrom();
 		
-		try (InputStream is = inputStreamFrom.fromEnvironmentVariablesOrClassLoaderOrFile(); ){
-			ServiceAccountCredentials fromStream = ServiceAccountCredentials.fromStream(is);
-			FixedCredentialsProvider create = FixedCredentialsProvider.create(fromStream);
-			return create;
+		try (InputStream credentialsStream = credentialsInputStreamDecorator.fromEnvironmentVariablesOrClassLoaderOrFile(); ){
+			ServiceAccountCredentials serviceAccountCredentials = ServiceAccountCredentials.fromStream(credentialsStream);
+			FixedCredentialsProvider credentialsProvider = FixedCredentialsProvider.create(serviceAccountCredentials);
+			return credentialsProvider;
 			
 		} catch (Exception e) {
 			CcpErrorPubSubCredentialsLoad ccpErrorPubSubCredentialsLoad = new CcpErrorPubSubCredentialsLoad(e);
@@ -120,13 +120,13 @@ public class CcpPubSubStarter {
 	}
 
 	/**
-	 * Exceção usada para relatar que a inscrição não pôde ser iniciada porque o tópico ainda não existe no PubSub.
+	 * Exception used to report that the subscription could not be started because the topic does not exist in PubSub yet.
 	 */
 	@SuppressWarnings("serial")
 	public static class CcpErrorPubSubTopicNotCreated extends RuntimeException {
 		/**
-		 * Monta a mensagem informando qual tópico está faltando.
-		 * @param topicName o nome do tópico ainda não criado
+		 * Builds the message stating which topic is missing.
+		 * @param topicName the name of the topic not created yet
 		 */
 		private CcpErrorPubSubTopicNotCreated(String topicName) {
 			super("Topic still has not been created: " + topicName);
