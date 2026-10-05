@@ -21,19 +21,31 @@ import com.google.pubsub.v1.ProjectSubscriptionName;
  * number of threads and waits for messages in {@code synchronizeMessages()}.
  */
 public class CcpPubSubStarter {
+	/** Fields of the credentials file. */
 	enum JsonFieldNames implements CcpJsonFieldName{
+		/** The GCP project. */
 		project_id
 	}
 
+	/** The credentials file read as JSON. */
 	final CcpJsonRepresentation parameters;
 	
+	/** The receiver of the subscription. */
 	private final CcpMessageReceiver topic;
 	
+	/** The number of executor threads. */
 	private final int threads;
 	
+	/** Handler of the failures. */
 	private final CcpBusiness notifyError ;
 	
 	
+	/**
+	 * Reads the credentials and keeps the settings.
+	 * @param notifyError handler of the failures
+	 * @param topic the receiver of the subscription
+	 * @param threads the number of executor threads
+	 */
 	public CcpPubSubStarter(CcpBusiness notifyError, CcpMessageReceiver topic, int threads) {
 		this.parameters = this.loadCredentials();
 		this.notifyError = notifyError;
@@ -41,6 +53,10 @@ public class CcpPubSubStarter {
 		this.topic = topic;
 	}
 
+	/**
+	 * Reads the credentials named by {@code GOOGLE_APPLICATION_CREDENTIALS} as JSON.
+	 * @return the credentials
+	 */
 	private CcpJsonRepresentation loadCredentials() {
 		CcpStringDecorator credentialsJson = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
 		CcpPropertiesDecorator propertiesDecorator = credentialsJson.propertiesFrom();
@@ -48,6 +64,11 @@ public class CcpPubSubStarter {
 		return credentialsProperties;
 	}
 		
+	/**
+	 * Subscribes the receiver to its subscription and blocks until the subscriber terminates. A missing topic or any other
+	 * failure is handed to the error handler (twice: over the error and over the handler's own result).
+	 * @return this starter
+	 */
 	public CcpPubSubStarter synchronizeMessages() {
 		
 		Subscriber subscriber = null;
@@ -93,6 +114,11 @@ public class CcpPubSubStarter {
 		}
 	}
 
+	/**
+	 * Builds the credentials provider from {@code GOOGLE_APPLICATION_CREDENTIALS}.
+	 * @return the credentials provider
+	 * @throws CcpErrorPubSubCredentialsLoad when the credentials cannot be read
+	 */
 	private FixedCredentialsProvider getCredentials(){
 		CcpStringDecorator credentialsVariableName = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
 		CcpInputStreamDecorator credentialsInputStreamDecorator = credentialsVariableName.inputStreamFrom();
@@ -112,8 +138,13 @@ public class CcpPubSubStarter {
 
 	
 
+	/** Raised when the Pub/Sub credentials cannot be read. */
 	@SuppressWarnings("serial")
 	private static class CcpErrorPubSubCredentialsLoad extends RuntimeException {
+		/**
+		 * Wraps the cause.
+		 * @param cause the original failure
+		 */
 		private CcpErrorPubSubCredentialsLoad(Throwable cause) {
 			super(cause);
 		}
