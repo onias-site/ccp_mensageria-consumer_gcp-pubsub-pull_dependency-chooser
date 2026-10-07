@@ -2,7 +2,6 @@ package com.ccp.topic.consumer.pubsub.pull;
 
 import com.ccp.decorators.CcpJsonRepresentation;
 import com.ccp.decorators.CcpJsonFieldName;
-import com.ccp.especifications.db.utils.entity.CcpEntity;
 import com.ccp.business.CcpBusiness;
 import com.ccp.constants.CcpOtherConstants;
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
@@ -12,9 +11,12 @@ import com.google.pubsub.v1.PubsubMessage;
 import com.ccp.json.fields.validation.CcpJsonCommonsFields;
 
 /**
- * GCP Pub/Sub {@code MessageReceiver}. Parses the received message as JSON and acknowledges it ({@code ack}); on a
- * failure, notifies the error handler and rejects it ({@code nack}). The execution of the asynchronous task is
- * commented out, so a valid message is acknowledged without being processed.
+ * GCP Pub/Sub {@code MessageReceiver}. Parses the received message as JSON, runs the task of the subscription over it and
+ * acknowledges it ({@code ack}); on a failure, notifies the error handler and rejects it ({@code nack}), so Pub/Sub
+ * delivers it again.
+ * <p>The task comes from outside because this module belongs to the ccp cost center and the processing of the messages
+ * (e.g. {@code JnMensageriaReceiver.executeProcess}) belongs to the jn one. Until 2026-10-06 the task was commented out
+ * and every valid message was acknowledged without being processed.</p>
  */
 public class CcpMessageReceiver implements MessageReceiver {
 	/** Fields of the error message. */
@@ -22,38 +24,31 @@ public class CcpMessageReceiver implements MessageReceiver {
 		/** The message that failed. */
 		values
 	}
-	/** Error handler meant for the asynchronous task (unused while the task is disabled). */
-	protected final CcpBusiness jnAsyncBusinessNotifyError;
 	
 	/** Handler of the failures of the receiver. */
 	private final CcpBusiness notifyError ;
 
-	/** Entity of the asynchronous tasks (unused while the task is disabled). */
-	protected final CcpEntity asyncTask;
+	/** Processes each message of the subscription. */
+	private final CcpBusiness task;
 	
 	/** The subscription (topic) name. */
 	public final String name;
 
-	
 	/**
 	 * Builds the receiver.
 	 * @param notifyError handler of the failures
-	 * @param asyncTask entity of the asynchronous tasks
 	 * @param name the subscription name
-	 * @param jnAsyncBusinessNotifyError error handler of the asynchronous task
+	 * @param task processes each message of the subscription
 	 */
-	public CcpMessageReceiver(CcpBusiness notifyError,
-			 CcpEntity asyncTask,
-			String name,  CcpBusiness jnAsyncBusinessNotifyError) {
+	public CcpMessageReceiver(CcpBusiness notifyError, String name, CcpBusiness task) {
 		this.notifyError = notifyError;
-		this.asyncTask = asyncTask;
-		this.jnAsyncBusinessNotifyError = jnAsyncBusinessNotifyError;
 		this.name = name;
+		this.task = task;
 	}
 
 	/**
-	 * Parses and acknowledges the message; on a failure (e.g. invalid JSON), runs the error handler over the error details
-	 * and then again over its own result, and rejects the message.
+	 * Parses the message, runs the task over it and acknowledges it; on a failure (invalid JSON, or the task failing), runs
+	 * the error handler once over the error details and rejects the message.
 	 * @param message the Pub/Sub message
 	 * @param consumer acknowledges or rejects the message
 	 */
@@ -63,18 +58,7 @@ public class CcpMessageReceiver implements MessageReceiver {
 			String receivedMessage = data.toStringUtf8();
 			CcpJsonRepresentation messageJson = new CcpJsonRepresentation(receivedMessage);
 			try {
-/*				CcpBusiness task = msg -> 
- * 					CcpAsyncTask.executeProcess(this.name, msg, 
- * 					this.asyncTask, this.jnAsyncBusinessNotifyError);
-*/
-//				CcpBusiness task = msg -> 			
-//				JnAsyncMensageriaSender.INSTANCE.executeProcesss(
-//						this.asyncTask, 
-//						this.name, 
-//						msg, 
-//						this.jnAsyncBusinessNotifyError
-//						);
-//				task.apply(messageJson);
+				this.task.execute(messageJson);
 			} catch (Throwable e) {
 				CcpErrorMessageReceiverTaskFailed ccpErrorMessageReceiverTaskFailed = new CcpErrorMessageReceiverTaskFailed(this.name, messageJson, e);
 				throw ccpErrorMessageReceiverTaskFailed;
@@ -82,9 +66,7 @@ public class CcpMessageReceiver implements MessageReceiver {
 			consumer.ack();
 		} catch (Throwable e) {
 			CcpJsonRepresentation json = new CcpJsonRepresentation(e);
-			
-			CcpJsonRepresentation errorNotificationResult = this.notifyError.execute(json);
-			this.notifyError.execute(errorNotificationResult);
+			this.notifyError.execute(json);
 			consumer.nack();
 		}
 

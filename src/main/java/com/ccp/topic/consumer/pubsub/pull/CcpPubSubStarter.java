@@ -66,7 +66,8 @@ public class CcpPubSubStarter {
 		
 	/**
 	 * Subscribes the receiver to its subscription and blocks until the subscriber terminates. A missing topic or any other
-	 * failure is handed to the error handler (twice: over the error and over the handler's own result).
+	 * failure is handed once to the error handler (until 2026-10-06 it ran twice, the second time over its own result, and
+	 * an {@code IllegalStateException} other than the missing topic was swallowed).
 	 * @return this starter
 	 */
 	public CcpPubSubStarter synchronizeMessages() {
@@ -95,16 +96,15 @@ public class CcpPubSubStarter {
 			if(isTopicNotFound) {
 				CcpErrorPubSubTopicNotCreated topicNotCreatedError = new CcpErrorPubSubTopicNotCreated(this.topic.name);
 				CcpJsonRepresentation json = new CcpJsonRepresentation(topicNotCreatedError);
-				
-				CcpJsonRepresentation errorNotificationResult = this.notifyError.execute(json);
-				this.notifyError.execute(errorNotificationResult);
+				this.notifyError.execute(json);
+				return this;
 			}
+			CcpJsonRepresentation json = new CcpJsonRepresentation(e);
+			this.notifyError.execute(json);
 			return this;
 		} catch (Throwable e) {
 			CcpJsonRepresentation json = new CcpJsonRepresentation(e);
-			
-			CcpJsonRepresentation errorNotificationResult = this.notifyError.execute(json);
-			this.notifyError.execute(errorNotificationResult);
+			this.notifyError.execute(json);
 			return this;
 		} finally {
 			boolean subscriberWasCreated = subscriber != null;
