@@ -14,8 +14,8 @@ import com.ccp.json.fields.validation.CcpJsonCommonsFields;
  * GCP Pub/Sub {@code MessageReceiver}. Parses the received message as JSON, runs the task of the subscription over it and
  * acknowledges it ({@code ack}); on a failure, notifies the error handler and rejects it ({@code nack}), so Pub/Sub
  * delivers it again.
- * <p>The task comes from outside because this module belongs to the ccp cost center and the processing of the messages
- * (e.g. {@code JnMensageriaReceiver.executeProcess}) belongs to the jn one. Until 2026-10-06 the task was commented out
+ * <p>The task comes from outside because this module belongs to the ccp cost center, which knows nothing of how the
+ * messages are processed: that belongs to whoever uses it. Until 2026-10-06 the task was commented out
  * and every valid message was acknowledged without being processed.</p>
  */
 public class CcpMessageReceiver implements MessageReceiver {
