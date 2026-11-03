@@ -1,35 +1,21 @@
 package com.ccp.topic.consumer.pubsub.pull;
 
-import java.io.InputStream;
-
 import com.ccp.business.CcpBusiness;
-import com.ccp.decorators.CcpInputStreamDecorator;
 import com.ccp.decorators.CcpJsonRepresentation;
-import com.ccp.decorators.CcpJsonFieldName;
-import com.ccp.decorators.CcpPropertiesDecorator;
-import com.ccp.decorators.CcpStringDecorator;
 import com.google.api.gax.core.ExecutorProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.gax.core.InstantiatingExecutorProvider;
-import com.google.auth.oauth2.ServiceAccountCredentials;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.ServiceOptions;
 import com.google.cloud.pubsub.v1.Subscriber;
 import com.google.cloud.pubsub.v1.Subscriber.Builder;
 import com.google.pubsub.v1.ProjectSubscriptionName;
 /**
- * GCP Pub/Sub pull subscriber starter. Reads the credentials from
- * {@code GOOGLE_APPLICATION_CREDENTIALS}, creates the {@code Subscriber} with the configured
- * number of threads and waits for messages in {@code synchronizeMessages()}.
+ * GCP Pub/Sub pull subscriber starter. Uses the application default credentials (the service account of the VM, or the
+ * file named by {@code GOOGLE_APPLICATION_CREDENTIALS} on a developer machine), creates the {@code Subscriber} with the
+ * configured number of threads and waits for messages in {@code synchronizeMessages()}.
  */
 public class CcpPubSubStarter {
-	/** Fields of the credentials file. */
-	enum JsonFieldNames implements CcpJsonFieldName{
-		/** The GCP project. */
-		project_id
-	}
-
-	/** The credentials file read as JSON. */
-	final CcpJsonRepresentation parameters;
-	
 	/** The receiver of the subscription. */
 	private final CcpMessageReceiver topic;
 	
@@ -41,29 +27,17 @@ public class CcpPubSubStarter {
 	
 	
 	/**
-	 * Reads the credentials and keeps the settings.
+	 * Keeps the settings.
 	 * @param notifyError handler of the failures
 	 * @param topic the receiver of the subscription
 	 * @param threads the number of executor threads
 	 */
 	public CcpPubSubStarter(CcpBusiness notifyError, CcpMessageReceiver topic, int threads) {
-		this.parameters = this.loadCredentials();
 		this.notifyError = notifyError;
 		this.threads = threads;
 		this.topic = topic;
 	}
 
-	/**
-	 * Reads the credentials named by {@code GOOGLE_APPLICATION_CREDENTIALS} as JSON.
-	 * @return the credentials
-	 */
-	private CcpJsonRepresentation loadCredentials() {
-		CcpStringDecorator credentialsJson = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
-		CcpPropertiesDecorator propertiesDecorator = credentialsJson.propertiesFrom();
-		CcpJsonRepresentation credentialsProperties = propertiesDecorator.environmentVariablesOrClassLoaderOrFile();
-		return credentialsProperties;
-	}
-		
 	/**
 	 * Subscribes the receiver to its subscription and blocks until the subscriber terminates. A missing topic or any other
 	 * failure is handed once to the error handler (until 2026-10-06 it ran twice, the second time over its own result, and
@@ -74,7 +48,7 @@ public class CcpPubSubStarter {
 		
 		Subscriber subscriber = null;
 		try {
-			String projectName = this.parameters.getAsString(JsonFieldNames.project_id);
+			String projectName = ServiceOptions.getDefaultProjectId();
 			
 			ProjectSubscriptionName subscription = ProjectSubscriptionName.of(projectName, this.topic.name);
 			InstantiatingExecutorProvider.Builder executorProviderBuilder = InstantiatingExecutorProvider.newBuilder();
@@ -115,17 +89,14 @@ public class CcpPubSubStarter {
 	}
 
 	/**
-	 * Builds the credentials provider from {@code GOOGLE_APPLICATION_CREDENTIALS}.
+	 * Builds the credentials provider from the application default credentials.
 	 * @return the credentials provider
 	 * @throws CcpErrorPubSubCredentialsLoad when the credentials cannot be read
 	 */
 	private FixedCredentialsProvider getCredentials(){
-		CcpStringDecorator credentialsVariableName = new CcpStringDecorator("GOOGLE_APPLICATION_CREDENTIALS");
-		CcpInputStreamDecorator credentialsInputStreamDecorator = credentialsVariableName.inputStreamFrom();
-		
-		try (InputStream credentialsStream = credentialsInputStreamDecorator.fromEnvironmentVariablesOrClassLoaderOrFile(); ){
-			ServiceAccountCredentials serviceAccountCredentials = ServiceAccountCredentials.fromStream(credentialsStream);
-			FixedCredentialsProvider credentialsProvider = FixedCredentialsProvider.create(serviceAccountCredentials);
+		try {
+			GoogleCredentials credentials = GoogleCredentials.getApplicationDefault();
+			FixedCredentialsProvider credentialsProvider = FixedCredentialsProvider.create(credentials);
 			return credentialsProvider;
 			
 		} catch (Exception e) {
