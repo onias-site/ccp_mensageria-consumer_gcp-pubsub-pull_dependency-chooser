@@ -5,6 +5,7 @@ import com.ccp.decorators.CcpTimeDecorator;
 import com.ccp.decorators.CcpJsonFieldName;
 import com.ccp.business.CcpBusiness;
 import com.ccp.constants.CcpOtherConstants;
+import com.ccp.especifications.db.utils.CcpDbCallsOfTheThread;
 import com.google.cloud.pubsub.v1.AckReplyConsumer;
 import com.google.cloud.pubsub.v1.MessageReceiver;
 import com.google.protobuf.ByteString;
@@ -70,14 +71,20 @@ public class CcpMessageReceiver implements MessageReceiver {
 
 	/**
 	 * Processes the message and writes its line. The line is written after the acknowledgement or the rejection, so
-	 * a failure to write never changes the fate of the message.
+	 * a failure to write never changes the fate of the message. The calls to the database made while the message is
+	 * processed ({@link CcpDbCallsOfTheThread}, with a new trace id per message) go in the line too: the trace id, each
+	 * call and the totals, read by the local panel of the queues ({@code documentation/deploy/29-filas-do-pubsub.py}).
 	 * @param message the Pub/Sub message
 	 * @param consumer acknowledges or rejects the message
 	 */
 	public void receiveMessage(PubsubMessage message, AckReplyConsumer consumer) {
+		String traceId = CcpDbCallsOfTheThread.newTraceId();
+		CcpDbCallsOfTheThread.start(traceId);
 		long startedAt = System.currentTimeMillis();
-		CcpJsonRepresentation result = this.process(message, consumer);
+		CcpJsonRepresentation processResult = this.process(message, consumer);
 		long finishedAt = System.currentTimeMillis();
+		CcpJsonRepresentation dbCalls = CcpDbCallsOfTheThread.finish();
+		CcpJsonRepresentation result = processResult.mergeWithAnotherJson(dbCalls);
 		long durationMs = finishedAt - startedAt;
 		Timestamp publishTime = message.getPublishTime();
 		long publishedAtSeconds = publishTime.getSeconds();

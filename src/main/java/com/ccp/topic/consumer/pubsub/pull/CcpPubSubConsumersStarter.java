@@ -3,10 +3,14 @@ package com.ccp.topic.consumer.pubsub.pull;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.ccp.business.CcpBusiness;
 import com.ccp.decorators.CcpFileDecorator;
+import com.ccp.decorators.CcpReflectionConstructorDecorator;
 import com.ccp.decorators.CcpJsonFieldName;
 import com.ccp.decorators.CcpStringDecorator;
 import com.ccp.dependency.injection.CcpDependencyInjection;
+import com.ccp.dependency.injection.CcpInstanceProvider;
+import com.ccp.especifications.mensageria.sender.CcpMensageriaSender;
 import com.ccp.implementations.cache.gcp.memorystore.CcpGcpMemoryStore;
 import com.ccp.implementations.db.bulk.elasticsearch.CcpElasticSerchDbBulk;
 import com.ccp.implementations.db.crud.elasticsearch.CcpElasticSearchCrud;
@@ -34,6 +38,9 @@ public class CcpPubSubConsumersStarter {
 		/** What separates the columns of a line. */
 		COLUMN_SEPARATOR { public String getValue() { return "\t"; } }
 	}
+
+	/** The optional column of a line that names the provider of the {@code CcpMensageriaSender} of its consumer. */
+	private static final int SENDER_CLASS_COLUMN = 3;
 
 	/**
 	 * Wires the production dependencies, starts the consumers and waits for them.
@@ -77,8 +84,9 @@ public class CcpPubSubConsumersStarter {
 	}
 
 	/**
-	 * Starts the consumer of one line of the file of topics.
-	 * @param line the topic and the number of threads
+	 * Starts the consumer of one line of the file of topics: topic, threads, ack deadline (read by {@code 03-criar-filas})
+	 * and, optionally, {@code senderClass}.
+	 * @param line the line
 	 * @return the thread of the consumer
 	 */
 	private static Thread startConsumer(String line) {
@@ -87,9 +95,36 @@ public class CcpPubSubConsumersStarter {
 		String topic = columns[0];
 		String threadsAsText = columns[1];
 		int threads = Integer.parseInt(threadsAsText);
-		CcpPubSubTopicConsumer topicConsumer = new CcpPubSubTopicConsumer(topic, threads);
+		CcpPubSubReceiverTask receiverTask = new CcpPubSubReceiverTask(topic);
+		CcpBusiness task = getTask(columns, receiverTask);
+		CcpPubSubTopicConsumer topicConsumer = new CcpPubSubTopicConsumer(topic, threads, task);
 		Thread consumer = new Thread(topicConsumer, topic);
 		consumer.start();
 		return consumer;
+	}
+
+	/**
+	 * The task of the consumer of a line. Without the column {@code senderClass}, the task publishes through the sender of
+	 * the registry (the synchronous one: what it publishes runs in the same thread). With it, the provider named there is
+	 * instantiated by {@link CcpDependencyInjection#getInstance}, without being registered, and every message of this
+	 * consumer runs seeing that sender only in its own thread, so the choice does not reach the other consumers (since
+	 * 2026-11-05, for the queues of the bots, which publish through Pub/Sub).
+	 * @param columns the columns of the line
+	 * @param receiverTask runs each message
+	 * @return the task
+	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private static CcpBusiness getTask(String[] columns, CcpPubSubReceiverTask receiverTask) {
+		boolean senderOfTheRegistry = columns.length <= SENDER_CLASS_COLUMN;
+		if (senderOfTheRegistry) {
+			return receiverTask;
+		}
+		String senderClassName = columns[SENDER_CLASS_COLUMN];
+		CcpStringDecorator senderClassNameDecorator = new CcpStringDecorator(senderClassName);
+		CcpReflectionConstructorDecorator senderClassReflection = senderClassNameDecorator.reflection();
+		Class providerClass = senderClassReflection.forName();
+		CcpMensageriaSender sender = CcpDependencyInjection.getInstance((Class<CcpInstanceProvider<CcpMensageriaSender>>) providerClass);
+		CcpPubSubTaskWithOwnSender taskWithOwnSender = new CcpPubSubTaskWithOwnSender(receiverTask, sender);
+		return taskWithOwnSender;
 	}
 }
